@@ -18,17 +18,23 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
         string Logfile = "";
               
         //Options
+        System.Drawing.Imaging.ImageFormat OutputImageFormat = System.Drawing.Imaging.ImageFormat.Bmp;
+        System.Drawing.Imaging.PixelFormat OutputPixelFormat = System.Drawing.Imaging.PixelFormat.Format24bppRgb; 
+        string OutputFileExtension = ".bmp";
+
         bool ApplyConvolution = true;
         bool DoBinarize = true;
         bool DetermineBinarizationThresholdAutomatically = false;
         bool DoCropToFit = false;
         bool DoResize = false;
+        bool DoRename = false;
 
         double[,] ConvolutionMatrix = new double[3,3];
         int BinarizationThreshold = 128;
-
+        int CropMargin = 1;
         int ResizeWidth = 50;
         int ResizeHeight = 50;
+        string RenamePrefix = string.Empty;
 
         ManualResetEvent mrePauseResume = new ManualResetEvent(true);
         bool IsStopSignalled = false;
@@ -44,6 +50,8 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
         void SetControls()
         {
+            comboOutputImageFormat.SelectedIndex = 0;
+
             this.LogFolder = GetExecutingDirectory().FullName.TrimEnd('\\') + @"\Log";
 
             if (!Directory.Exists(this.LogFolder))
@@ -176,6 +184,38 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
             this.DestinationFolderPath = destination_folder;
 
             //Load options
+            switch(comboOutputImageFormat.SelectedIndex)
+            {
+                case 1:
+                    this.OutputImageFormat = System.Drawing.Imaging.ImageFormat.Bmp;
+                    this.OutputPixelFormat = System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
+                    this.OutputFileExtension = ".bmp";
+                    break;
+                case 2:
+                    this.OutputImageFormat = System.Drawing.Imaging.ImageFormat.Bmp;
+                    this.OutputPixelFormat = System.Drawing.Imaging.PixelFormat.Format1bppIndexed;
+                    this.OutputFileExtension = ".bmp";
+                    break;
+                case 3:
+                    this.OutputImageFormat = System.Drawing.Imaging.ImageFormat.Jpeg;
+                    this.OutputPixelFormat = System.Drawing.Imaging.PixelFormat.Format24bppRgb; 
+                    this.OutputFileExtension = ".jpg";
+                    break;
+
+                case 4:
+                    this.OutputImageFormat = System.Drawing.Imaging.ImageFormat.Png;
+                    this.OutputPixelFormat = System.Drawing.Imaging.PixelFormat.Format32bppArgb; 
+                    this.OutputFileExtension = ".png";
+                    break;
+                case 0:
+                default:
+                    this.OutputImageFormat = System.Drawing.Imaging.ImageFormat.Bmp;
+                    this.OutputPixelFormat = System.Drawing.Imaging.PixelFormat.Format24bppRgb; 
+                    this.OutputFileExtension = ".bmp";
+                    break;
+            }
+
+
             this.ApplyConvolution = cbApplyConvolution.Checked;
             if (this.ApplyConvolution)
             {
@@ -195,8 +235,14 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
             this.BinarizationThreshold = sliderBinarizationThreshold.Value;            
 
             this.DoCropToFit = cbCropToFit.Checked;
-            this.DoResize = cbResize.Checked;
+            this.CropMargin = txtCropMargin.Text.Trim().ToInt(-1);
+            if(this.CropMargin < 0)
+            {
+                this.CropMargin = 1;
+                txtCropMargin.Text = "1";
+            }
 
+            this.DoResize = cbResize.Checked;
             if (this.DoResize)
             {
                 this.ResizeWidth = txtResizeWidth.Text.Trim().ToInt(-1);
@@ -234,7 +280,10 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
                 }
             }
 
-            if(!this.ApplyConvolution && !this.DoBinarize && !this.DoCropToFit && !this.DoResize)
+            this.DoRename = cbRename.Checked;
+            this.RenamePrefix = txtRenamePrefix.Text.Trim();
+
+            if(!this.ApplyConvolution && !this.DoBinarize && !this.DoCropToFit && !this.DoResize && !DoRename)
             {
                 ShowError("No processing step is selected");
                 return;
@@ -263,7 +312,7 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
             if (IsStopSignalled) return;
 
-            var sub_dirs = Directory.GetDirectories(dir);
+            var sub_dirs = Directory.EnumerateDirectories(dir);
 
             foreach (var sub_dir in sub_dirs)
             {
@@ -273,17 +322,18 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
             if (IsStopSignalled) return;
 
-            var image_files = Directory.GetFiles(dir, "*.jpg");
+            var image_files = Directory.EnumerateFiles(dir, "*.jpg");
 
+            int image_index = 0;
             foreach (var image_file in image_files)
             {
                 if (IsStopSignalled) return;
-                ProcessImage(image_file);
+                ProcessImage(image_file, image_index);
+                image_index++;
             }
-
         }
 
-        void ProcessImage(string image_file)
+        void ProcessImage(string image_file, int image_index)
         {
             mrePauseResume.WaitOne();
 
@@ -302,8 +352,20 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
             }
 
             //Calculate output file
-            string out_file = this.DestinationFolderPath.TrimEnd('\\') + @"\" + GetRelativePath(fi.FullName, this.SourceFolderPath);
-            FileInfo ofi = new FileInfo(out_file);
+
+
+            string out_file_name = fi.FullName;
+            if (this.DoRename)
+            {
+                out_file_name = out_file_name.Replace(fi.Name, this.RenamePrefix + fi.Directory.Name + "_" + image_index.ToString(4) + this.OutputFileExtension);
+            }
+            else
+            {
+                out_file_name = out_file_name.Replace(fi.Extension, "") + this.OutputFileExtension;
+            }
+            
+            string out_file_path = this.DestinationFolderPath.TrimEnd('\\') + @"\" + GetRelativePath(out_file_name, this.SourceFolderPath);
+            FileInfo ofi = new FileInfo(out_file_path);
             if (!ofi.Directory.Exists)
             {
                 ofi.Directory.Create();
@@ -322,7 +384,7 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
                     if (this.ApplyConvolution)
                     {
-
+                        bmpp.GrayscaleInverseConvolve3x3(this.ConvolutionMatrix);
                     }
 
                     if (this.DoBinarize)
@@ -341,7 +403,7 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
                     if (this.DoCropToFit)
                     {
-                        var rect = bmpp.GetFittingRectangle(Color.White, 1);
+                        var rect = bmpp.GetFittingRectangle(Color.White, this.CropMargin);
                         _processed = (Bitmap)bmp.Clone(rect, bmp.PixelFormat);
                     }
 
@@ -380,7 +442,12 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
                         }
                     }
 
-                    _processed.Save(out_file, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    if (this.OutputPixelFormat != System.Drawing.Imaging.PixelFormat.Format24bppRgb)
+                    {
+                        _processed = (Bitmap)_processed.Clone(new Rectangle(0, 0, _processed.Width, _processed.Height), this.OutputPixelFormat);
+                    }
+
+                    _processed.Save(out_file_path, this.OutputImageFormat);
 
                     _processed.Dispose();
                 }
@@ -532,12 +599,17 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
         private void cbCropToFit_CheckedChanged(object sender, EventArgs e)
         {
-
+            panelCropToFitOptions.Enabled = cbCropToFit.Checked;
         }
 
         private void cbResize_CheckedChanged(object sender, EventArgs e)
         {
             panelResize.Enabled = cbResize.Checked;
+        }
+
+        private void cbRename_CheckedChanged(object sender, EventArgs e)
+        {
+            panelRenameOptions.Enabled = cbRename.Checked;
         }
 
         private void comboConvolutionPresets_SelectedIndexChanged(object sender, EventArgs e)
@@ -574,7 +646,7 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
                     txtCM_02.Text = "0.0";
                     txtCM_10.Text = "0.1";
                     txtCM_11.Text = "1.0";
-                    txtCM_12.Text = "0.0";
+                    txtCM_12.Text = "0.1";
                     txtCM_20.Text = "0.0";
                     txtCM_21.Text = "0.1";
                     txtCM_22.Text = "0.0";
@@ -595,6 +667,6 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
             }
         }
-        #endregion
+        #endregion        
     }
 }

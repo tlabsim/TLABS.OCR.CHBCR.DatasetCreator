@@ -636,7 +636,88 @@ namespace TLABS.Extensions
             _original.UnlockBits(bits2);
 
             return this;
-        }        
+        }
+
+        public BitmapProcessor GrayscaleInverseConvolve3x3(double[,] k)
+        {
+            int kh = k.GetLength(0),
+                kw = k.GetLength(1);
+
+            if (kh != 3 && kw != 3) return this;
+
+            double[] _k = new double[9];
+
+            for (int h = 0; h < 3; h++)
+            {
+                for (int w = 0; w < 3; w++)
+                {
+                    _k[h * 3 + w] = k[h, w];
+                }
+            }
+
+            int _size = _width * _height;
+            var grey = new int[_size];
+            var dest = new int[_size];
+
+            for (int i = 0; i < _size; i++)
+            {
+                grey[i] = 255 - (int)(0.299 * _red[i] + 0.587 * _green[i] + 0.114 * _blue[i]);
+                if (grey[i] > 255) grey[i] = 255;
+                if (grey[i] < 0) grey[i] = 0;
+            }
+
+            double d_new_grey = 0.0;
+            int new_grey = 0;
+            for (int r = 0; r < _size; r += _width)
+            {
+                for (int c = 0; c < _width; c++)
+                {
+                    int i = r + c;
+                    bool not_in_fringe = c > 0 && c < _width - 1;
+
+                    int[] indices = new int[9] { 
+                        not_in_fringe ? i - _width - 1 : -1,
+                        i - _width,
+                        not_in_fringe ? i - _width + 1 : -1,
+                        not_in_fringe ? i - 1 : -1,
+                        i, 
+                        not_in_fringe ? i + 1 : -1,
+                        not_in_fringe ? i + _width - 1 : -1,
+                        i + _width,
+                        not_in_fringe ? i + _width + 1 : -1                
+                    };
+
+                    d_new_grey = 0;
+                    new_grey = 0;
+                    for (int p = 0; p < 9; p++)
+                    {
+                        int ip = indices[p];
+
+                        if (ip >= 0 && ip < _size)
+                        {
+                            d_new_grey += grey[ip] * _k[p];
+                        }
+                    }
+
+                    new_grey = 255 - (int)d_new_grey;
+                    if (new_grey < 0) new_grey = 0;
+                    if (new_grey > 255) new_grey = 255;
+
+                    dest[i] = (int)(0xff000000u | (uint)(new_grey << 16) | (uint)(new_grey << 8) | (uint)new_grey);
+
+                    _red[i] = new_grey;
+                    _green[i] = new_grey;
+                    _blue[i] = new_grey;
+                }
+            }
+
+            var rect = new Rectangle(0, 0, _width, _height);
+            var bits2 = _original.LockBits(rect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            Marshal.Copy(dest, 0, bits2.Scan0, dest.Length);
+            _original.UnlockBits(bits2);
+
+            return this;
+        }
 
         #region Rotate and flip
         public BitmapProcessor Rotate(double angle, bool fit = false)

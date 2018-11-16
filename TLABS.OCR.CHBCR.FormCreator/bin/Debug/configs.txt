@@ -1,4 +1,4 @@
-﻿# CBHCR settings
+﻿# CHBCR settings
 
 DPI 300
 

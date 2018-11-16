@@ -24,4 +24,3 @@ THICK_LINE_WIDTH 2f
 FONT SolaimanLipi
 # FONT Vrinda
 FONTSIZE Auto
-
