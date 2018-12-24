@@ -1393,9 +1393,8 @@ namespace TLABS.Extensions
 
             int left = 0, top = 0, right = _width - 1, bottom = _height - 1;
             int p, inc;
-            int h = 0;
 
-            for (int i = 0; i < size; i += _width, h++)
+            for (int i = 0, h = 0; i < size; i += _width, h++)
             {
                 for (int w = 0; w < _width; w++)
                 {
@@ -1410,7 +1409,7 @@ namespace TLABS.Extensions
             //Left
             for (int l = 0; l < _width; l++)
             {
-                if (col_sum[l] != 0)
+                if (col_sum[l] != 0 && (l >= _width - 1 || col_sum[l + 1] != 0) && (l >= _width - 2 || col_sum[l + 2] != 0))
                 {
                     left = l - margin;
                     if (left < 0) left = 0;
@@ -1421,8 +1420,9 @@ namespace TLABS.Extensions
             //Right
             for (int r = _width - 1; r >= 0; r--)
             {
-                if (col_sum[r] != 0)
+                if (col_sum[r] != 0 && (r < 1 || col_sum[r - 1] != 0) && (r < 2 || col_sum[r - 2] != 0))
                 {
+
                     right = r + margin;
                     if (right >= _width) right = _width - 1;
                     break;
@@ -1432,7 +1432,7 @@ namespace TLABS.Extensions
             //Top
             for (int t = 0; t < _height; t++)
             {
-                if (row_sum[t] != 0)
+                if (row_sum[t] != 0 && (t >= _height - 1 || row_sum[t + 1] != 0) && (t >= _height - 2 || row_sum[t + 2] != 0))
                 {
                     top = t - margin;
                     if (top < 0) top = 0;
@@ -1443,7 +1443,7 @@ namespace TLABS.Extensions
             //Bottom
             for (int b = _height - 1; b >= 0; b--)
             {
-                if (row_sum[b] != 0)
+                if (row_sum[b] != 0 && (b < 1 || row_sum[b - 1] != 0) && (b < 2 || row_sum[b - 2] != 0))
                 {
                     bottom = b + margin;
                     if (bottom >= _height) bottom = _height - 1;
@@ -1484,6 +1484,43 @@ namespace TLABS.Extensions
             }
 
             return new Rectangle(left, top, new_width, new_height);
+        }
+
+        public void GetNonBackgroundPixelCount(Color background, out int non_bg_pixels, out int total_pixels)
+        {
+            non_bg_pixels = 0;
+            total_pixels = 0;
+
+            if (background == null)
+            {
+                background = this.Background;
+            }
+
+            int size = _width * _height;
+
+            int bg_r = background.R;
+            int bg_g = background.G;
+            int bg_b = background.B;
+
+            int p = 0;
+
+            for (int rs = 0; rs < size; rs += _width)
+            {
+                for (int w = 0; w < _width; w++)
+                {
+                    p = rs + w;
+                    non_bg_pixels += (bg_r == _red[p] && bg_g == _green[p] && bg_b == _blue[p]) ? 0 : 1;
+                }
+            }
+
+            total_pixels = size;
+        }
+
+        public double GetNonBackgroundPixelPercentage(Color background)
+        {
+            int total = 0, non_bg = 0;
+            this.GetNonBackgroundPixelCount(background, out non_bg, out total);
+            return total > 0 ? (double)non_bg / (double)total : 0.0;
         }
 
         #endregion

@@ -138,7 +138,8 @@ namespace TLABS.OCR.CHBCR.FormProcessor
                         {
                             using (Bitmap thumb = (Bitmap)Image.FromFile(fi.FullName))
                             {
-                                ScanThumbnails.Add(thumb.Resize(0.2));
+
+                                ScanThumbnails.Add(thumb.Resize(300.0 / thumb.Height));
                             }
 
                             FormScans.Add(fi);
@@ -338,6 +339,8 @@ namespace TLABS.OCR.CHBCR.FormProcessor
                 roi.Height = (int)(Math.Round((dl.Y - tl.Y + dr.Y - tr.Y) / 2.0));
 
                 error = CropLetters(roi);
+
+                CurrentProcessing = null;
             }
 
             return error;
@@ -915,7 +918,7 @@ namespace TLABS.OCR.CHBCR.FormProcessor
                             int x = (int)Math.Round(cur_x) + crop_margin,
                                 y = (int)Math.Round(cur_y + actual_label_box_height) + crop_margin;
 
-                            string current_letter_folder = this.OutputFolder + current_letter_id + @"\";
+                            string current_letter_folder = this.OutputFolder + current_letter_id.ToString(4) + @"\";
                             if (!Directory.Exists(current_letter_folder))
                             {
                                 Directory.CreateDirectory(current_letter_folder);
@@ -937,7 +940,7 @@ namespace TLABS.OCR.CHBCR.FormProcessor
                                 }
                                 catch (Exception ex)
                                 {
-                                    MessageBox.Show(ex.Message + ex.StackTrace, "Save failed");
+                                    LogError(ex.Message + ex.StackTrace, "Save failed");
                                 }
                             }
 

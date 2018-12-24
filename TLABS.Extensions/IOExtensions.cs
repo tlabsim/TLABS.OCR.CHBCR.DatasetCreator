@@ -49,21 +49,29 @@ namespace TLABS.Extensions
         /// <summary>
         /// Renames the directory
         /// </summary>
-        /// <param name="DI"></param>
+        /// <param name="di"></param>
         /// <param name="NewFolderName"></param>
-        public static void Rename(this DirectoryInfo DI, string NewFolderName)
+        public static void Rename(this DirectoryInfo di, string new_dir_path)
         {
-            
+            if (di != null && !string.IsNullOrEmpty(new_dir_path))
+            {
+                di.MoveTo(Path.Combine(di.Parent.FullName, new_dir_path));
+            }
         }
 
         /// <summary>
         /// Renames the file
         /// </summary>
-        /// <param name="FI"></param>
-        /// <param name="NewFileName"></param>
-        public static void Rename(this FileInfo FI, string NewFileName)
+        /// <param name="fi"></param>
+        /// <param name="new_file_name"></param>
+        public static void Rename(this FileInfo fi, string new_file_name)
         {
-            File.Move(FI.FullName, NewFileName);
+            if (fi != null && !string.IsNullOrEmpty(new_file_name))
+            {
+                string new_file_path = Path.Combine(fi.Directory.FullName, new_file_name + fi.Extension);
+                File.Delete(new_file_path);
+                File.Move(fi.FullName, new_file_name);
+            }
         }
 
         /// <summary>
