@@ -136,7 +136,7 @@ namespace TLABS.OCR.CHBCR.LetterImageProcessor
 
             if (string.IsNullOrEmpty(source_folder) || string.IsNullOrEmpty(destination_folder))
             {
-                ShowError("Select source and destinatoin folder");
+                ShowError("Select source and destination folder");
                 Retreat();
                 return;
             }
